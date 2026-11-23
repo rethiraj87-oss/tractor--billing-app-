@@ -1,0 +1,51 @@
+name: Build Android APK
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: 'stable'
+
+      - name: Setup Flutter Project Structure
+        run: |
+          if [ ! -f pubspec.yaml ]; then
+            mkdir -p temp_backup
+            [ -f main.dart ] && cp main.dart temp_backup/main.dart
+            [ -f lib/main.dart ] && cp lib/main.dart temp_backup/main.dart
+            flutter create --org com.tractor.billing --project-name tractor_billing_app .
+            [ -f temp_backup/main.dart ] && cp temp_backup/main.dart lib/main.dart
+            rm -rf temp_backup
+          elif [ ! -d android ]; then
+            flutter create --platforms=android .
+          fi
+
+      - name: Get dependencies
+        run: flutter pub get
+
+      - name: Build APK
+        run: flutter build apk --release
+
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: tractor-billing-apk
+          path: build/app/outputs/flutter-apk/app-release.apk
+          
